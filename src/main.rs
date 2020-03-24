@@ -31,21 +31,19 @@ async fn api_post_response(req: Request<Body>, conn: PgConnection) -> Result<Res
     // Aggregate the body...
     let whole_body = hyper::body::to_bytes(req.into_body()).await?;
     // Decode as JSON...
-    let data: serde_json::Value = serde_json::from_reader(whole_body.reader())?;
-    // TODO look at serde_json impl
-    let json = serde_json::to_string(&data)?;
+    let json: NewTodo = serde_json::from_reader(whole_body.reader())?;
 
     let new_todo = NewTodo { title: json.title };
 
     diesel::insert_into(todos::table)
         .values(&new_todo)
-        .get_result(&conn)
+        .get_result::<(i32, String, bool)>(&conn)
         .expect("Error saving new post");
 
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from(json))?;
+        .body(Body::from("hi"))?;
     Ok(response)
 }
 
@@ -64,7 +62,8 @@ async fn api_get_response() -> Result<Response<Body>> {
     Ok(res)
 }
 
-async fn response_examples(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {
+async fn response_examples(req: Request<Body>) -> Result<Response<Body>> {
+    let conn = establish_connection();
     match (req.method(), req.uri().path()) {
         (&Method::POST, "/json_api") => api_post_response(req, conn).await,
         (&Method::GET, "/json_api") => api_get_response().await,
@@ -82,8 +81,6 @@ async fn response_examples(req: Request<Body>, conn: PgConnection) -> Result<Res
 async fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let conn = establish_connection();
-
     let addr = "127.0.0.1:8000".parse().unwrap();
 
     let new_service = make_service_fn(move |_| {
@@ -91,7 +88,7 @@ async fn main() -> Result<()> {
         async {
             Ok::<_, GenericError>(service_fn(move |req| {
                 // Clone again to ensure that client outlives this closure.
-                response_examples(req, conn)
+                response_examples(req)
             }))
         }
     });
