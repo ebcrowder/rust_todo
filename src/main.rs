@@ -26,11 +26,11 @@ pub fn establish_connection() -> PgConnection {
     PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
 }
 
-async fn api_post_response(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {
+async fn post_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {
     use schema::todos;
-    // Aggregate the body...
+    // aggregate the body...
     let whole_body = hyper::body::to_bytes(req.into_body()).await?;
-    // Decode as JSON...
+    // decode as JSON...
     let json: NewTodo = serde_json::from_reader(whole_body.reader())?;
 
     let new_todo = NewTodo { title: json.title };
@@ -43,12 +43,11 @@ async fn api_post_response(req: Request<Body>, conn: PgConnection) -> Result<Res
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        // TODO fix this
         .body(Body::from("todo inserted successfully."))?;
     Ok(response)
 }
 
-async fn api_get_response(conn: PgConnection) -> Result<Response<Body>> {
+async fn get_todos(conn: PgConnection) -> Result<Response<Body>> {
     use schema::todos::dsl::*;
 
     let results = todos.load::<Todo>(&conn).expect("error loading todos");
@@ -76,11 +75,34 @@ async fn api_get_response(conn: PgConnection) -> Result<Response<Body>> {
     Ok(res)
 }
 
-async fn response_examples(req: Request<Body>) -> Result<Response<Body>> {
+async fn delete_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {
+    use schema::todos::dsl::*;
+    // aggregate the body
+    let whole_body = hyper::body::to_bytes(req.into_body()).await?;
+
+    // decode as json
+    let json: Todo = serde_json::from_reader(whole_body.reader())?;
+
+    diesel::delete(todos)
+        .filter(id.eq(json.id))
+        .execute(&conn)
+        .expect("error deleting todo");
+
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from("todo deleted successfully."))?;
+    Ok(response)
+}
+
+// async fn update_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {}
+
+async fn routes(req: Request<Body>) -> Result<Response<Body>> {
     let conn = establish_connection();
     match (req.method(), req.uri().path()) {
-        (&Method::POST, "/todos") => api_post_response(req, conn).await,
-        (&Method::GET, "/todos") => api_get_response(conn).await,
+        (&Method::POST, "/todo") => post_todo(req, conn).await,
+        (&Method::GET, "/todos") => get_todos(conn).await,
+        (&Method::DELETE, "/todo") => delete_todo(req, conn).await,
         _ => {
             // Return 404 not found response.
             Ok(Response::builder()
@@ -102,7 +124,7 @@ async fn main() -> Result<()> {
         async {
             Ok::<_, GenericError>(service_fn(move |req| {
                 // Clone again to ensure that client outlives this closure.
-                response_examples(req)
+                routes(req)
             }))
         }
     });
