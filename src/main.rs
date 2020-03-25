@@ -43,13 +43,27 @@ async fn api_post_response(req: Request<Body>, conn: PgConnection) -> Result<Res
     let response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, "application/json")
-        .body(Body::from("hi"))?;
+        // TODO fix this
+        .body(Body::from("todo inserted successfully."))?;
     Ok(response)
 }
 
-async fn api_get_response() -> Result<Response<Body>> {
-    let data = vec!["foo", "bar"];
-    let res = match serde_json::to_string(&data) {
+async fn api_get_response(conn: PgConnection) -> Result<Response<Body>> {
+    use schema::todos::dsl::*;
+
+    let results = todos.load::<Todo>(&conn).expect("error loading todos");
+
+    let mut todo_vec: Vec<Todo> = Vec::new();
+
+    for todo in results {
+        todo_vec.push(Todo {
+            id: todo.id,
+            title: todo.title,
+            done: todo.done,
+        })
+    }
+
+    let res = match serde_json::to_string(&todo_vec) {
         Ok(json) => Response::builder()
             .header(header::CONTENT_TYPE, "application/json")
             .body(Body::from(json))
@@ -65,8 +79,8 @@ async fn api_get_response() -> Result<Response<Body>> {
 async fn response_examples(req: Request<Body>) -> Result<Response<Body>> {
     let conn = establish_connection();
     match (req.method(), req.uri().path()) {
-        (&Method::POST, "/json_api") => api_post_response(req, conn).await,
-        (&Method::GET, "/json_api") => api_get_response().await,
+        (&Method::POST, "/todos") => api_post_response(req, conn).await,
+        (&Method::GET, "/todos") => api_get_response(conn).await,
         _ => {
             // Return 404 not found response.
             Ok(Response::builder()
