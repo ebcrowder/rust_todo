@@ -21,8 +21,6 @@ This app uses PostgreSQL via Docker container.
   );
 ```
 
-```
-
 - Env vars:
 
   - create a `.env` file at the root of this repo and enter `DATABASE_URL=postgres://postgres:PASSWORD_OF_YOUR_CHOICE@localhost/postgres`, replacing the placeholder with a password of your choice.
@@ -34,4 +32,3 @@ This app uses PostgreSQL via Docker container.
   - serde
   - futures
   - and other utils per `Cargo.toml`
-```
