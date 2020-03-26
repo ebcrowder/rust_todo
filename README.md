@@ -8,8 +8,20 @@ This app uses PostgreSQL via Docker container.
 - Docker:
 
   - `docker pull postgres` to download the image
-  - `docker run --name some-postgres -p 127.0.0.1:5432:5432 -e POSTGRES_PASSWORD=PASSWORD_OF_YOUR_CHOICE -d postgres` to run the container at port `5432`. Replace the `POSTGRES_PASSWORD` with the password of your choice.
+  - `docker run --name some-postgres -p 5432:5432 -e POSTGRES_PASSWORD=PASSWORD_OF_YOUR_CHOICE -d postgres` to run the container at port `5432`. Replace the `POSTGRES_PASSWORD` with the password of your choice.
   - `docker exec -it some-postgres bash` to login to the container and access the database via `psql`
+
+- PostgreSQL:
+
+```SQL
+  CREATE TABLE todos (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  done BOOLEAN NOT NULL DEFAULT 'f'
+  );
+```
+
+```
 
 - Env vars:
 
@@ -22,3 +34,4 @@ This app uses PostgreSQL via Docker container.
   - serde
   - futures
   - and other utils per `Cargo.toml`
+```
