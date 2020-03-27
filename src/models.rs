@@ -1,7 +1,8 @@
 use super::schema::todos;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Queryable, PartialEq, Debug)]
+#[derive(AsChangeset, Deserialize, Serialize, Queryable, PartialEq, Debug)]
+#[table_name = "todos"]
 pub struct Todo {
     pub id: i32,
     pub title: String,

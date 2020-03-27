@@ -26,7 +26,7 @@ pub fn establish_connection() -> PgConnection {
     PgConnection::establish(&database_url).expect(&format!("Error connecting to {}", database_url))
 }
 
-async fn post_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {
+async fn put_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {
     use schema::todos;
     // aggregate the body...
     let whole_body = hyper::body::to_bytes(req.into_body()).await?;
@@ -95,13 +95,37 @@ async fn delete_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<
     Ok(response)
 }
 
-// async fn update_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {}
+async fn update_todo(req: Request<Body>, conn: PgConnection) -> Result<Response<Body>> {
+    use schema::todos::dsl::*;
+    // aggregate the body...
+    let whole_body = hyper::body::to_bytes(req.into_body()).await?;
+    // decode as JSON...
+    let json: Todo = serde_json::from_reader(whole_body.reader())?;
+
+    let update_todo = Todo {
+        id: json.id,
+        title: json.title,
+        done: json.done,
+    };
+
+    diesel::update(todos.filter(id.eq(update_todo.id)))
+        .set(&update_todo)
+        .execute(&conn)
+        .expect("Error updating new post");
+
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from("todo updated successfully."))?;
+    Ok(response)
+}
 
 async fn routes(req: Request<Body>) -> Result<Response<Body>> {
     let conn = establish_connection();
     match (req.method(), req.uri().path()) {
-        (&Method::POST, "/todo") => post_todo(req, conn).await,
+        (&Method::PUT, "/todo") => put_todo(req, conn).await,
         (&Method::GET, "/todos") => get_todos(conn).await,
+        (&Method::POST, "/todo") => update_todo(req, conn).await,
         (&Method::DELETE, "/todo") => delete_todo(req, conn).await,
         _ => {
             // Return 404 not found response.
