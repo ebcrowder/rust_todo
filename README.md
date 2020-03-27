@@ -12,7 +12,7 @@ This app uses PostgreSQL via Docker container.
   - `docker exec -it some-postgres bash` to login to the container and access the database via `psql`
 
 - PostgreSQL:
-  - set up a new table:
+  - Access the running PostgreSQL DB inside the Docker container via `psql` and set up a new table:
 
 ```SQL
   CREATE TABLE todos (
